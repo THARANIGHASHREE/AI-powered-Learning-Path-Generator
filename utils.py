@@ -14,7 +14,7 @@ from urllib.parse import quote_plus
 import base64
 
 try:
-    from fpdf import FPDF  # lightweight PDF generation
+    from fpdf import FPDF  
 except Exception:
     FPDF = None
 
@@ -40,7 +40,7 @@ async def setup_agent_with_tools(
         if progress_callback:
             progress_callback("Setting up agent with tools... ✅")
         
-        # Initialize tools configuration with mandatory YouTube
+       
         tools_config = {
             "youtube": {
                 "url": youtube_pipedream_url,
@@ -48,7 +48,7 @@ async def setup_agent_with_tools(
             }
         }
 
-        # Add Drive if URL provided
+        
         if drive_pipedream_url:
             tools_config["drive"] = {
                 "url": drive_pipedream_url,
@@ -57,7 +57,7 @@ async def setup_agent_with_tools(
             if progress_callback:
                 progress_callback("Added Google Drive integration... ✅")
 
-        # Add Notion if URL provided
+        
         if notion_pipedream_url:
             tools_config["notion"] = {
                 "url": notion_pipedream_url,
@@ -68,17 +68,17 @@ async def setup_agent_with_tools(
 
         if progress_callback:
             progress_callback("Initializing MCP client... ✅")
-        # Initialize MCP client with configured tools
+        
         mcp_client = MultiServerMCPClient(tools_config)
         
         if progress_callback:
             progress_callback("Getting available tools... ✅")
-        # Get all tools
+        
         tools = await mcp_client.get_tools()
         
         if progress_callback:
             progress_callback("Creating AI agent... ✅")
-        # Create agent with initialized model
+        
         mcp_orch_model = initialize_model(google_api_key)
         agent = create_react_agent(mcp_orch_model, tools)
         
@@ -111,13 +111,12 @@ def run_agent_sync(
                 progress_callback=progress_callback
             )
             
-            # Combine user goal with prompt template
+            
             learning_path_prompt = "User Goal: " + user_goal + "\n" + user_goal_prompt
             
             if progress_callback:
                 progress_callback("Generating your learning path...")
             
-            # Run the agent
             result = await agent.ainvoke(
                 {"messages": [HumanMessage(content=learning_path_prompt)]},
                 config=cfg
@@ -131,7 +130,7 @@ def run_agent_sync(
             print(f"Error in _run: {str(e)}")
             raise
 
-    # Run in new event loop
+    
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -233,6 +232,14 @@ def extract_days_and_questions(text: str) -> List[Dict[str, Any]]:
             any_url = re.search(r"https?://\S+", rest)
             video_link = any_url.group(0) if any_url else ""
 
+        # Fix placeholder YouTube links
+        if "VIDEO_ID_HERE" in video_link:
+            # Replace with a Google search link for the topic
+            if topic:
+                video_link = f"https://www.youtube.com/results?search_query={quote_plus(topic + ' tutorial')}"
+            else:
+                video_link = "https://www.youtube.com/"
+
         # Practice Questions section
         q_section_match = re.search(
             r"Practice\s*Questions\s*\(\s*10\s*\)\s*:?\s*(.*)$",
@@ -250,7 +257,10 @@ def extract_days_and_questions(text: str) -> List[Dict[str, Any]]:
                     questions.append(line)
         # Fallback to Google tutorial search if no video link
         if not video_link and topic:
-            video_link = f"https://www.google.com/search?q={quote_plus(topic + ' tutorial')}"
+            video_link = f"https://www.youtube.com/results?search_query={quote_plus(topic + ' tutorial')}"
+        elif not video_link:
+            video_link = "https://www.youtube.com/"
+            
         results.append({
             "day_title": day_title,
             "topic": topic,
@@ -282,6 +292,15 @@ def extract_days_and_questions(text: str) -> List[Dict[str, Any]]:
         # First URL in block as video link
         link_match = re.search(r"https?://\S+", block)
         video_link = link_match.group(0) if link_match else ""
+        
+        # Fix placeholder YouTube links
+        if "VIDEO_ID_HERE" in video_link:
+            # Replace with a Google search link for the topic
+            if topic:
+                video_link = f"https://www.youtube.com/results?search_query={quote_plus(topic + ' tutorial')}"
+            else:
+                video_link = "https://www.youtube.com/"
+
         # Questions section
         q_match = re.search(r"Practice\s*Questions\s*\(\s*10\s*\)\s*:?\s*(.*)$", block, flags=re.IGNORECASE | re.DOTALL)
         questions: List[str] = []
@@ -294,7 +313,10 @@ def extract_days_and_questions(text: str) -> List[Dict[str, Any]]:
                     questions.append(line)
         # Fallback to Google tutorial search if no video link
         if not video_link and topic:
-            video_link = f"https://www.google.com/search?q={quote_plus(topic + ' tutorial')}"
+            video_link = f"https://www.youtube.com/results?search_query={quote_plus(topic + ' tutorial')}"
+        elif not video_link:
+            video_link = "https://www.youtube.com/"
+            
         fallback.append({
             "day_title": day_title or "Day",
             "topic": topic,
